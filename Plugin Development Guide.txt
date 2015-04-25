@@ -1,0 +1,616 @@
+OSXRipper Plugin Development Guide
+==================================
+
+A note on naming conventions for finished plugin jar files.
+
+osSomeName.jar - a plugin for pulling out core OS data
+hardwareSomename.jar - a plugin that pulls out data relating to hardware devices on the machine
+softwareSomeName.jar - a plugin that pulls out centally stored data (i.e. it is not found under /Users)
+userSomeName.jar - a plugin to pull out data from a user's home directory (i.e. the source is found under /Users/username/someDirectory/...)
+iosSomeName.jar - a plugin to pull out data from a user's iOS device backup directory
+
+Currently plugins are built by implementing one of two interfaces. This does mean some basic 'cut and paste' coding is necessary. In the future
+Abstract classes implementing the interfaces may be added as an option to reduce some repetitive coding.
+
+Setting Up a Development Environment
+====================================
+1. Install JDK 1.6
+2. Install Eclipse for Java development. OSXRipper was built on Eclipse 4.1
+3. Ensure OSXRipper is unpacked and accessible
+
+Utility Classes
+===============
+
+Some generic classes in org.lamora.osxripper.util
+
+GetUserName - Pull out the username from a path. i.e. /Users/foo/Library path returns "foo"
+FileFinder - Find files of a specified name from a starting directory
+FileTraversal - Recursive traversal of directories, used in conjunction with FileFinder
+PlistRecursor - Dump Plist contents to tab indented ASCII
+
+Basic Project to Dump a Plist to ASCII
+======================================
+
+1. Create a new Java project in Eclipse
+	1.1 Ensure Java 1.6 is chosen as the Execution Environment
+	1.2 Ensure Create separate folders for sources and class files is selected
+2. Set up the build path
+	2.1. Right Click on the newly created project folder
+	2.2. Select Build Path -> Configure Build Path
+	2.3. Select Libraries tab
+	2.4. Click Add External JARs
+	2.5. Navigate to the OSXRipper folder and select osxripper.jar
+	2.6. Click OK
+3. Set up require Java package structure
+	3.1. Expand the project tree so the src folder is visible
+	3.2. Right click on the src folder
+	3.3. Select New -> Package
+	3.4. In the package dialog enter osxripper.plugin
+4. Create plugin class
+	4.1. On the osxripper.plugin package right click and select New -> Class
+	4.2. The class name must be Plugin
+	4.3. This example will use the basic interface for plugins. Click Add next to the Interface box
+	4.4. Type IPlugin until the org.lamora.osxripper.IPlugin appears in the list
+	4.5. Select the plugin and click OK
+	4.6. Select the Generate Comments box to create skeleton Javadoc for the class
+	4.7. Click Finish to create the class file
+5. Fill out the Plugin class and implement the interface methods
+	5.1. Add the following variables to the class.
+	
+		private String name;
+		private String description;
+		private PluginEnum pluginEnum;
+		private boolean active;
+	
+	5.2. Implement an empty contructor for the class. e.g.
+	
+		Plugin(){
+	
+		}
+	
+	5.3. Fill out basic details for plugin to provide to OSXRipper.	I use the contructor for this.
+	
+		public Plugin(){
+			setPluginName("Example Plugin");
+			setPluginDescription("Parses org.foo.some.plist in the /Library/Preferences directory. Pulls out some information.");
+			setPluginEnum(PluginEnum.OS);
+			setPluginActive(true);
+		}
+	
+		The PluginEnum decides which text file the output is written to.
+			OS - write to OS.txt
+			SOFTWARE - write to SOFTWARE.txt
+			HARDWARE - write to HARDWARE.txt
+			USER - write to USER.txt
+			IOS - write to IOS.txt
+		
+		For this particular example and Interface the output will not get written to a designated username file (e.g. USER.exampleUser.txt), usually USEr and IOS plugins would use
+		the second plugin interface IPliugiinII.
+	
+	5.4. Fully implement the interface setter and getter methods
+				
+		@Override
+		public String getPluginDescription() {
+			return description;
+		}
+
+		@Override
+		public PluginEnum getPluginEnum() {
+			return pluginEnum;
+		}
+
+		@Override
+		public String getPluginName() {
+			return name;
+		}
+
+		@Override
+		public boolean isPluginActive() {
+			return active;
+		}
+	
+		@Override
+		public void setPluginActive(boolean arg0) {
+			active = arg0;
+		}
+
+		@Override
+		public void setPluginDescription(String arg0) {
+			description = arg0;
+		}
+
+		@Override
+		public void setPluginEnum(PluginEnum arg0) {
+			pluginEnum = arg0;
+		}
+
+		@Override
+		public void setPluginName(String arg0) {
+			name = arg0;
+		}
+		
+		
+	5.5 Implement the process(File) method. The process method is the method called by OSXRipper to process an artifact.
+		5.5.1 To dump the contents of a Plist with no further processing needed the following code should suffice.
+		
+		@Override
+		public String process(File arg0) {
+			File aPlist = new File(arg0 +  File.separator + "Library" + File.separator + "Preferences" + File.separator + "org.foo.some.plist");
+			StringBuilder sBuilder = new StringBuilder();
+			sBuilder.append("----------").append(System.getProperty("line.separator"));
+			sBuilder.append(getPluginName()).append(System.getProperty("line.separator")).append(System.getProperty("line.separator"));
+			if(cupsPlist.exists()){
+				try {
+					PlistRecursor pr = new PlistRecursor(aPlist, new String[]{});
+					sBuilder.append(pr.dumpPlistToRaw());
+					sBuilder.append(System.getProperty("line.separator"));
+				} catch (Exception e) {
+					sBuilder.append("org.foo.some.plist Exception: ").append(e.getMessage()).append(System.getProperty("line.separator"));
+				}
+			}
+			else{
+				sBuilder.append("org.foo.some.plist does not exist").append(System.getProperty("line.separator"));
+			}
+			sBuilder.append("----------").append(System.getProperty("line.separator"));
+			return sBuilder.toString();
+		}
+		
+		Note: the above code is presented as an example, there are a number of optimisations that can be made. Or not.
+	
+	5.6. Create a Jar file of the plugin 
+		5.6.1. Right click on the project folder and select Export
+		5.6.2. Select JAR file from the Java folder
+		5.6.3. Ensure no other projects are selected and deselect .classpath and .project on the top right list
+		5.6.4. Ensure Export generated class files and resources is checked
+		5.6.5. Browse to the plugins folder of OSXRipper and name the plugin, bear in mind the naming convention mentioned at the start of this document
+		5.6.6. Optionally check the Compress the contents of the JAR file
+		5.6.7. Click finish
+		
+The plugin will be loaded next time OSXRipper is started
+
+
+Project Using the IPluginII interface to Dump a Plist to ASCII
+==============================================================
+
+The logic behind having a second interface is to provide the developer with an extra option in writing out results to custom files. As can be seen the
+majority of the code is identical to the code in the project using the IPlugin interface. OSXRipper will handle setting the output folder, by default this 
+will be the output folder selected by the user in the UI.
+
+1. Create a new Java project in Eclipse
+	1.1 Ensure Java 1.6 is chosen as the Execution Environment
+	1.2 Ensure Create separate folders for sources and class files is selected
+2. Set up the build path
+	2.1. Right Click on the newly created project folder
+	2.2. Select Build Path -> Configure Build Path
+	2.3. Select Libraries tab
+	2.4. Click Add External JARs
+	2.5. Navigate to the OSXRipper folder and select osxripper.jar
+	2.6. Click OK
+3. Set up require Java package structure
+	3.1. Expand the project tree so the src folder is visible
+	3.2. Right click on the src folder
+	3.3. Select New -> Package
+	3.4. In the package dialog enter osxripper.plugin
+4. Create plugin class
+	4.1. Add the two classes (FileFinder.java & FileTraversal.java) listed at the bottom of this section.
+	4.2. On the osxripper.plugin package right click and select New -> Class
+	4.3. The class name must be Plugin
+	4.4. This example will use the basic interface for plugins. Click Add next to the Interface box
+	4.5. Type IPluginII until the org.lamora.osxripper.IPluginII appears in the list
+	4.6. Select the plugin and click OK
+	4.7. Select the Generate Comments box to create skeleton Javadoc for the class
+	4.8. Click Finish to create the class file
+5. Fill out the Plugin class and implement the interface methods
+	5.1. Add the following variables to the class.
+	
+		private String name;
+		private String description;
+		private PluginEnum pluginEnum;
+		private boolean active;
+		private File output;
+	
+	5.2. Implement an empty contructor for the class. e.g.
+	
+		Plugin(){
+	
+		}
+	
+	5.3. Fill out basic details for plugin to provide to OSXRipper.	I use the contructor for this.
+	
+		public Plugin(){
+			setPluginName("Example Plugin");
+			setPluginDescription("Parses org.foo.someother.plist in the /Users/snark/Library/Preferences directory. Pulls out some information.");
+			setPluginEnum(PluginEnum.USER);
+			setPluginActive(true);
+		}
+	
+		The PluginEnum decides which text file the output is written to.
+			OS - write to OS.txt
+			SOFTWARE - write to SOFTWARE.txt
+			HARDWARE - write to HARDWARE.txt
+			USER - write to USER.txt
+			IOS - write to IOS.txt
+			
+		For this particular example and Interface the output will not get written to a designated username file (e.g. USER.exampleUser.txt), usually USEr and IOS plugins would use
+		the second plugin interface IPliugiinII.
+	
+	5.4. Fully implement the interface setter and getter methods
+				
+		@Override
+		public String getPluginDescription() {
+			return description;
+		}
+
+		@Override
+		public PluginEnum getPluginEnum() {
+			return pluginEnum;
+		}
+
+		@Override
+		public String getPluginName() {
+			return name;
+		}
+
+		@Override
+		public boolean isPluginActive() {
+			return active;
+		}
+	
+		@Override
+		public void setPluginActive(boolean arg0) {
+			active = arg0;
+		}
+
+		@Override
+		public void setPluginDescription(String arg0) {
+			description = arg0;
+		}
+
+		@Override
+		public void setPluginEnum(PluginEnum arg0) {
+			pluginEnum = arg0;
+		}
+
+		@Override
+		public void setPluginName(String arg0) {
+			name = arg0;
+		}
+		
+		@Override
+		public File getOutputDir() {
+			return output;
+		}
+
+		@Override
+		public void setOutputDir(File arg0) {
+			output = arg0;		
+		}
+		
+		
+	5.5 Implement the process(File) method. The process method is the method called by OSXRipper to process an artifact.
+		5.5.1 To dump the contents of a Plist with no further processing needed the following code should suffice.
+		
+		@Override
+		public String process(File arg0) {
+			File usersDir = new File(arg0 +  File.separator + "Users");
+			StringBuilder sBuilder = new StringBuilder();
+			String[] watchKeys = new String[]{};
+			try{
+				ArrayList<File> plistFiles = FileFinder.findFile(usersDir, "org.foo.someother.plist");
+				int fileCount = plistFiles .size();
+				if(fileCount == 0){
+					sBuilder.append("----------").append(System.getProperty("line.separator"));
+					sBuilder.append(getPluginName()).append(System.getProperty("line.separator")).append(System.getProperty("line.separator"));
+					sBuilder.append("No org.foo.someother.plist files found").append(System.getProperty("line.separator"));
+					sBuilder.append("----------").append(System.getProperty("line.separator"));
+					return sBuilder.toString();
+				}
+				else{
+					for(int i = 0 ; i < fileCount ; i++){
+						try {
+							sBuilder.append("----------").append(System.getProperty("line.separator"));
+							sBuilder.append(plistFiles .get(i).getAbsolutePath()).append(System.getProperty("line.separator")).append(System.getProperty("line.separator"));
+							String outputPart = GetUserName.getUserNameFromPath(plistFiles .get(i));
+							File outputFile = new File(getOutputDir() + File.separator + getPluginEnum() + "." + outputPart + ".txt");
+							PlistRecursor pr = new PlistRecursor(plistFiles .get(i), watchKeys);
+							sBuilder.append(pr.dumpPlistToRaw());
+							sBuilder.append(System.getProperty("line.separator"));
+							sBuilder.append("----------").append(System.getProperty("line.separator"));
+							Logger.appendLog(outputFile, sBuilder.toString());
+						}
+						catch(Exception e){
+							return sBuilder.append("Exception:org.foo.someother.plist: ").append(e.getMessage()).append(System.getProperty("line.separator")).toString();
+						}
+					}
+				}
+			}
+			catch(IOException e){
+				return sBuilder.append("Exception:org.foo.someother.plist: ").append(e.getMessage()).append(System.getProperty("line.separator")).toString();
+			}
+			return "org.foo.someother.plist output written to seperate user files.";
+		}
+		
+		Note: the above code is presented as an example, there are a number of optimisations that can be made. Or not.
+	
+	5.6. Create a Jar file of the plugin 
+		5.6.1. Right click on the project folder and select Export
+		5.6.2. Select JAR file from the Java folder
+		5.6.3. Ensure no other projects are selected and deselect .classpath and .project on the top right list
+		5.6.4. Ensure Export generated class files and resources is checked
+		5.6.5. Browse to the plugins folder of OSXRipper and name the plugin, bear in mind the naming convention mentioned at the start of this document
+		5.6.6. Optionally check the Compress the contents of the JAR file
+		5.6.7. Click finish
+		
+The plugin will be loaded next time OSXRipper is started and write to a file called USER.snark.txt. If the Enum had been set to IOS the output file would be IOS.snark.txt.
+
+------------------------------------------------------------------------------------------------
+FileFinder.java
+------------------------------------------------------------------------------------------------
+package osxripper.plugin;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+/**
+ * Class to scan for files in a given directory 
+ * @author 
+ * @version 
+ * @since 
+ */
+public class FileFinder {
+	
+	/**
+	 * Scan for files in a given directory 
+	 * @param aStartPoint the starting directory
+	 * @param aFileName the name of the file to find
+	 * @return list of files
+	 * @throws IOException
+	 */
+	public static ArrayList<File> findFile(final File aStartPoint, final String aFileName) throws IOException{
+		final ArrayList<File> cookieFiles = new ArrayList<File>();
+		new FileTraversal(){
+			public void onFile(final File f) {
+				try {
+					if(f.getAbsolutePath().equals(f.getCanonicalPath())){
+						if(f.getName().equalsIgnoreCase(aFileName)){
+							cookieFiles.add(f);
+						}
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}.traverse(aStartPoint);
+		
+		return cookieFiles;
+	}
+}
+
+------------------------------------------------------------------------------------------------
+FileTraversal.java - note that this code will follow symlinks and produce duplicate output.  
+------------------------------------------------------------------------------------------------
+package osxripper.plugin;
+
+import java.io.File;
+import java.io.IOException;
+
+/**
+ * Code from http://vafer.org/blog/20071112204524/
+ * @author Torsten Curdt
+ * 
+ *         EXAMPLE USAGE: new FileTraversal() { public void onFile( final File f
+ *         ) { System.out.println(f); } }.traverse(new File("somedir"));
+ * 
+ */
+public class FileTraversal {
+
+	public final void traverse(final File f) throws IOException {
+		if (f.isDirectory()) {
+			onDirectory(f);
+			final File[] childs = f.listFiles();
+			for (File child : childs) {
+				traverse(child);
+			}
+			return;
+		}
+		onFile(f);
+	}
+
+	public void onDirectory(final File d) {
+	}
+
+	public void onFile(final File f) {
+	}
+}
+------------------------------------------------------------------------------------------------
+
+Project Using the IPluginII interface to Query a SQLite Database
+================================================================
+
+To reduce some of the complexity of writing a SQLite plugin here is the actual code for the initial cut of the iOS plugin DB - Addressbook. AdressBook.sqlitedb is
+found in the iTunes Backup directories /Users/username/Application Support/MobileSync/Backup/[SHA1]. For the most part this plugin follows the same pattern as a 
+standard IPluginII plugin. Only the process(File) method sees a change, instead of using PListRecursor a SQLite-JDBC driver is called.
+
+1. Create a new Java project in Eclipse
+	1.1 Ensure Java 1.6 is chosen as the Execution Environment
+	1.2 Ensure Create separate folders for sources and class files is selected
+2. Set up the build path
+	2.1. Right Click on the newly created project folder
+	2.2. Select Build Path -> Configure Build Path
+	2.3. Select Libraries tab
+	2.4. Click Add External JARs
+	2.5. Navigate to the OSXRipper folder and select osxripper.jar
+	2.6. Click OK
+3. Set up require Java package structure
+	3.1. Expand the project tree so the src folder is visible
+	3.2. Right click on the src folder
+	3.3. Select New -> Package
+	3.4. In the package dialog enter osxripper.plugin
+4. Create plugin class
+	4.1. Add the two classes (FileFinder.java & FileTraversal.java) listed at the bottom of this section.
+	4.2. On the osxripper.plugin package right click and select New -> Class
+	4.3. The class name must be Plugin
+	4.4. This example will use the basic interface for plugins. Click Add next to the Interface box
+	4.5. Type IPluginII until the org.lamora.osxripper.IPluginII appears in the list
+	4.6. Select the plugin and click OK
+	4.7. Select the Generate Comments box to create skeleton Javadoc for the class
+	4.8. Click Finish to create the class file
+5. Fill out the Plugin class and implement the interface methods, below is the complete code for the Plugin class
+
+	package osxripper.plugin;
+
+	import java.io.File;
+	import java.io.IOException;
+	import java.sql.Connection;
+	import java.sql.DriverManager;
+	import java.sql.ResultSet;
+	import java.sql.Statement;
+	import java.util.ArrayList;
+
+	import org.lamora.osxripper.io.Logger;
+	import org.lamora.osxripper.plugin.IPluginII;
+	import org.lamora.osxripper.plugin.PluginEnum;
+	import org.lamora.osxripper.util.GetUserName;
+
+	/**
+	 * Plugin to parse AdressBook.sqlitedb database in the file named 31bb7ba8914766d4ba40d6dfb6113c8b614be442
+	 * @author 
+	 * @version 0.1 initial cut
+	 * @since 0.1
+	 */
+	public class Plugin implements IPluginII {
+
+		private String name;
+		private String description;
+		private PluginEnum pluginEnum;
+		private boolean active;
+		private File output;
+		
+		/**
+		 * Constructor - as per previous constructors
+		 */
+		public Plugin(){
+			setPluginName("DB - Addressbook");
+			setPluginDescription("Parses AdressBook.sqlitedb database in the file named 31bb7ba8914766d4ba40d6dfb6113c8b614be442.");
+			setPluginEnum(PluginEnum.IOS);
+			setPluginActive(true);
+		}
+		
+		//Setter and getter code exactly the same as before
+
+		@Override
+		public String getPluginDescription() {
+			return description;
+		}
+
+		@Override
+		public PluginEnum getPluginEnum() {
+			return pluginEnum;
+		}
+
+		@Override
+		public String getPluginName() {
+			return name;
+		}
+
+		@Override
+		public boolean isPluginActive() {
+			return active;
+		}
+
+		@Override
+		public void setPluginActive(boolean arg0) {
+			active = arg0;
+		}
+
+		@Override
+		public void setPluginDescription(String arg0) {
+			description = arg0;
+		}
+
+		@Override
+		public void setPluginEnum(PluginEnum arg0) {
+			pluginEnum = arg0;
+		}
+
+		@Override
+		public void setPluginName(String arg0) {
+			name = arg0;
+		}
+
+		@Override
+		public File getOutputDir() {
+			return output;
+		}
+
+		@Override
+		public void setOutputDir(File arg0) {
+			output = arg0;		
+		}
+		
+		//
+		// The process method, as in the previous plugins takes care of finding and processing the artifacts. In this case the output will be directed to the output file IOS.username.txt
+		//
+		@Override
+		public String process(File arg0) {
+			File usersDir = new File(arg0 +  File.separator + "Users");
+			StringBuilder sBuilder = new StringBuilder();
+			try{
+				ArrayList<File> dbFiles = FileFinder.findFile(usersDir, "31bb7ba8914766d4ba40d6dfb6113c8b614be442");
+				
+				int fileCount = dbFiles.size();
+				if(fileCount == 0){
+					sBuilder.append("----------").append(System.getProperty("line.separator"));
+					sBuilder.append(getPluginName()).append(System.getProperty("line.separator")).append(System.getProperty("line.separator"));
+					sBuilder.append("No AdressBook.sqlitedb file found").append(System.getProperty("line.separator"));
+					sBuilder.append("----------").append(System.getProperty("line.separator"));
+					return sBuilder.toString();
+				}
+				else{
+					sBuilder = new StringBuilder();
+					sBuilder.append("----------").append(System.getProperty("line.separator"));
+					sBuilder.append(getPluginName()).append(System.getProperty("line.separator"));
+					for(int i = 0 ; i < fileCount ; i++){
+						try {
+							sBuilder.append(dbFiles.get(i).getAbsolutePath()).append(System.getProperty("line.separator")).append(System.getProperty("line.separator"));
+							String outputPart = GetUserName.getUserNameFromPath(dbFiles.get(i));
+							File outputFile = new File(getOutputDir() + File.separator + getPluginEnum() + "." + outputPart + ".txt");
+							
+							Class.forName("org.sqlite.JDBC");
+							Connection connection = null;
+							Statement stmt = null;
+							
+							String connString = "jdbc:sqlite:" + dbFiles.get(i).getAbsolutePath();
+							connection = DriverManager.getConnection(connString);
+							
+							String query = "SELECT first, last, value, datetime(creationdate + 978307200, 'unixepoch', 'localtime') AS 'create'," +
+											"datetime(ModificationDate  + 978307200, 'unixepoch', 'localtime') AS 'mod'"+
+											"FROM ABPerson, ABMultivalue WHERE rowid = record_id";
+							
+							stmt = connection.createStatement();
+							ResultSet rs = stmt.executeQuery(query);
+							while (rs.next()) {
+								sBuilder.append("\tFirst: ").append(rs.getString("first")).append(System.getProperty("line.separator"));
+								sBuilder.append("\tLast: ").append(rs.getString("last")).append(System.getProperty("line.separator"));
+								sBuilder.append("\tValue: ").append(rs.getString("value")).append(System.getProperty("line.separator"));
+								sBuilder.append("\tCreated: ").append(rs.getString("create")).append(System.getProperty("line.separator"));
+								sBuilder.append("\tModified: ").append(rs.getString("mod")).append(System.getProperty("line.separator"));
+								sBuilder.append(System.getProperty("line.separator"));
+							}
+
+							sBuilder.append(System.getProperty("line.separator"));
+							sBuilder.append("----------").append(System.getProperty("line.separator"));
+							Logger.appendLog(outputFile, sBuilder.toString());
+						}
+						catch(Exception e){
+							return sBuilder.append("Exception:AdressBook.sqlitedb: ").append(e.getMessage()).append(System.getProperty("line.separator")).toString();
+						}
+					}
+				}
+			}
+			catch(IOException e){
+				return sBuilder.append("Exception:AdressBook.sqlitedb: ").append(e.getMessage()).append(System.getProperty("line.separator")).toString();
+			}
+			return "AdressBook.sqlitedb output written to seperate user files.";
+		}
+	}

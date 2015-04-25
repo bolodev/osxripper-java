@@ -1,0 +1,94 @@
+OSXRipper (Alpha release)
+=========================
+
+This software was inspired by Harlan Carvey's work on RegRipper - http://windowsir.blogspot.co.uk - and my boredom at having to collect and process plists manually.
+
+Purpose: Dump out system, user and users' iOS backup data in a similar manner to RegRipper on Windows. The output is to text files named after the categories 
+of the plugins. There is very little sophistication to the dumped data, the idea being just to get the data collected in one place.
+
+i.e.
+
+OS.txt - Details about OS configurations and settings
+Hardware.txt - Details about hardware configurations and settings
+Software.txt - Details about installed software
+User.USERNAME.txt - Details about user configurations and settings
+iOS.USERNAME.txt - Details about users' iOS backup configurations and settings (assumes non-encrypted backup)
+
+Alternatives to OSXRipper
+=========================
+
+Here are a couple of alternatives, really wish I had seen iParser before I built OSXRipper...
+
+OSX Auditor - https://github.com/jipegit/OSXAuditor
+iParser - http://az4n6.blogspot.co.uk/2012/08/automated-plist-parser.html
+        - http://www.arizona4n6.com/downloads-2/?did=1
+
+If anyone knows of alternatives I would be more than happy to add them here.
+
+Prerequisite Libraries
+======================
+
+Download and place the following jar files in the "osxripper_lib" directory
+
+1. dd-plist.jar from https://code.google.com/p/plist/downloads/list
+2. commons-compress-1.5.jar from http://www.mirrorservice.org/sites/ftp.apache.org//commons/compress/binaries/commons-compress-1.5-bin.zip
+3. SQLite JDBC driver from https://bitbucket.org/xerial/sqlite-jdbc/downloads/sqlite-jdbc-3.7.2.jar
+
+Third Party Libraries & Credits
+===============================
+
+MVC code - http://cs.txstate.edu/~hn12/teaching/cs4354/2013Spring/lec/Model-View-Controller.PDF
+
+
+Running OSXRipper on OSX
+========================
+
+To Run:
+
+1. Mount an OSX disk image
+2. Open Terminal
+3. su admin or skip to 4 if already admin user
+4. sudo java -jar osxripper.jar (on OSX access to /private seems to be restricted even on mounted disk paths(?))
+
+To Use:
+
+1. Select root directory of mounted disk
+2. Select empty folder/create one for the output files
+3. Click Run
+
+Running OSXRipper on the Command Line
+=====================================
+
+To Run:
+
+1. Mount an OSX disk image
+2. Open Terminal
+3. su admin or skip to 4 if already admin user
+4. sudo java -jar osxripper.jar --ALL -i <mounted dir> -o <output dir>
+
+Note: On OSX Mavericks
+
+run as root, su to an admin account and type sudo su. Then run as normal
+
+
+To Refine What is Ripped:
+=========================
+
+1. Descriptions of plugins are available from the Help menu Help -> Show Plugin Descriptions
+2. Select/deselect plugins as required.
+
+N.B. Plugin selections do _not_ persist when the application is exited. If there are plugins that are irrelevant just move the jar file out of the plugin directory and restart OSXRipper.
+
+Running OSXripper on Other Operating Systems
+============================================
+
+- On Linux the OSXRipper needs to be run from command line (i.e. java -jar osxripper.jar). It has been tested on Ubuntu (SIFT workstation) and CENTOS
+- On Windows double clicking the osxripper.jar should be sufficient
+- OSXripper works on hardcoded directory paths i.e. /private or /Users. To run on a non-OSX system ensure the disk image is mounted or that the files are exported into an appropriate structure.
+- For instance on Windows create a base folder (i.e. C:\Temp\OSXThing\) then copy the files of interest into that directory reconstructing the OSX directory structure.
+- The application has been tested by exporting folders via FTKImager into C:\Temp\testosx
+
+Extending OSXRipper
+===================
+
+OSXRipper uses a plugin system to provide functionality, please read the Dev Guide outlines creating new plugins for plists and SQLite databases.
